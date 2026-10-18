@@ -1,5 +1,6 @@
 import { q, init, json, me, validate, withDatabaseErrors, type EventRow } from '@/lib/server';
 
+// ส่วนการทำงานของ GET API สำหรับค้นหาและกรองกิจกรรม
 export const GET = withDatabaseErrors(async (req: Request) => {
   await init();
   const sp = new URL(req.url).searchParams;
@@ -12,6 +13,7 @@ export const GET = withDatabaseErrors(async (req: Request) => {
   return json(rows);
 });
 
+// ส่วนการทำงานของ POST API สำหรับเพิ่มกิจกรรม
 export const POST = withDatabaseErrors(async (req: Request) => {
   await init();
   const u = await me();

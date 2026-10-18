@@ -1,3 +1,4 @@
+// ส่วนส่งคำขอ API และจัดการผลลัพธ์หรือข้อผิดพลาด
 export async function api<T = unknown>(url: string, method = 'GET', body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   let d: unknown = null;

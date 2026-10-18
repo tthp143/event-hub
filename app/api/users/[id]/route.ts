@@ -2,6 +2,7 @@ import { q, init, json, me, type User, withDatabaseErrors } from '@/lib/server';
 
 type Ctx = { params: Promise<{ id: string }> };
 
+// ส่วนการทำงานของ PUT API สำหรับเปลี่ยนบทบาทผู้ใช้โดย Admin
 export const PUT = withDatabaseErrors(async (req: Request, { params }: Ctx) => {
   await init();
   if ((await me())?.role !== 'ADMIN') return json({ error: 'เฉพาะ Admin' }, 403);
@@ -11,6 +12,7 @@ export const PUT = withDatabaseErrors(async (req: Request, { params }: Ctx) => {
   return r ? json(r) : json({ error: 'ไม่พบผู้ใช้' }, 404);
 });
 
+// ส่วนการทำงานของ DELETE API สำหรับลบผู้ใช้โดย Admin
 export const DELETE = withDatabaseErrors(async (_: Request, { params }: Ctx) => {
   await init();
   if ((await me())?.role !== 'ADMIN') return json({ error: 'เฉพาะ Admin' }, 403);

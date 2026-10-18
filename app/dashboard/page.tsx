@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { User } from '@/lib/server';
 
+// ส่วนแสดง Dashboard สำหรับจัดการบทบาทและบัญชีผู้ใช้โดย Admin
 export default function Dashboard() {
   const [me, setMe] = useState<User | null | undefined>(), [rows, setRows] = useState<User[]>([]), [err, setErr] = useState('');
+  // ส่วนโหลดรายชื่อผู้ใช้
   const load = () => api<User[]>('/api/users').then(setRows).catch(e => setErr(e.message));
   useEffect(() => { api<User | null>('/api/auth/me').then(u => { setMe(u); if (u?.role === 'ADMIN') load(); }); }, []);
+  // ส่วนดำเนินการกับผู้ใช้และโหลดข้อมูลใหม่
   const act = (f: () => Promise<unknown>) => f().then(load).catch(e => setErr(e.message));
 
   if (me === undefined) return <main />;

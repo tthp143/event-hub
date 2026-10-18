@@ -1,8 +1,10 @@
 import { cookies } from 'next/headers';
 import { q, init, hash, check, makeToken, json, me, type User, withDatabaseErrors } from '@/lib/server';
 
+// ส่วนการทำงานของ GET API สำหรับตรวจสอบผู้ใช้ที่เข้าสู่ระบบ
 export const GET = withDatabaseErrors(async () => json(await me()));
 
+// ส่วนการทำงานของ POST API สำหรับเข้าสู่ระบบ สมัครสมาชิก และออกจากระบบ
 export const POST = withDatabaseErrors(async (req: Request, { params }: { params: Promise<{ action: string }> }) => {
   const { action } = await params;
   const jar = await cookies();

@@ -12,6 +12,7 @@ export type EventRow = {
 type Tag = (s: TemplateStringsArray, ...v: unknown[]) => Promise<unknown[]>;
 
 let _sql: Tag | undefined;
+// ส่วนจัดการข้อผิดพลาดจากการตั้งค่าฐานข้อมูล
 export class DatabaseConfigurationError extends Error {
   constructor() {
     super('DATABASE_URL ยังเป็นค่าว่างหรือค่าตัวอย่าง กรุณาใส่ connection string จริงจาก Neon/PostgreSQL ในไฟล์ .env.local แล้วเริ่มเซิร์ฟเวอร์ใหม่');
@@ -34,6 +35,7 @@ export function withDatabaseErrors<Args extends unknown[]>(
   };
 }
 
+// ส่วนตรวจสอบการเชื่อมต่อและเรียกใช้ฐานข้อมูล
 export const q = <T>(s: TemplateStringsArray, ...v: unknown[]) => {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new DatabaseConfigurationError();
@@ -70,6 +72,7 @@ export const json = (d: unknown, status = 200) => Response.json(d, { status });
 const SECRET = process.env.AUTH_SECRET || 'dev-secret';
 
 let ready: Promise<void> | undefined;
+// ส่วนเตรียมตารางผู้ใช้ กิจกรรม และการเข้าร่วม
 export const init = async () => {
   await connection();
   ready ||= (async () => {
@@ -85,6 +88,7 @@ export const init = async () => {
   }
 };
 
+// ส่วนสร้างและตรวจสอบรหัสผ่านแบบแฮช
 export const hash = (p: string, salt = crypto.randomBytes(8).toString('hex')) =>
   salt + ':' + crypto.scryptSync(p, salt, 32).toString('hex');
 export const check = (p: string, h: string) => {
@@ -92,9 +96,11 @@ export const check = (p: string, h: string) => {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
 const sig = (v: string) => crypto.createHmac('sha256', SECRET).update(v).digest('hex');
+// ส่วนสร้างโทเคนสำหรับยืนยันตัวตน
 export const makeToken = (id: number) => `${id}.${sig(String(id))}`;
 
 // Admin (id 0) มาจาก env, คนอื่นดึงยศล่าสุดจาก DB
+// ส่วนตรวจสอบตัวตนและดึงบทบาทผู้ใช้งาน
 export async function me(): Promise<User | null> {
   const c = (await cookies()).get('t')?.value;
   const [id, s] = (c || '').split('.');
@@ -103,6 +109,7 @@ export async function me(): Promise<User | null> {
   return (await q<User>`select id, username, role from users where id=${Number(id)}`)[0] ?? null;
 }
 
+// ส่วนตรวจสอบข้อมูลกิจกรรมก่อนบันทึก
 export function validate(b: Record<string, unknown>) {
   const t = (s: unknown) => String(s ?? '').trim();
   const d = { title: t(b.title), description: t(b.description), image: t(b.image), organizer: t(b.organizer), category: t(b.category), mode: t(b.mode) || 'ออนไลน์', price: Number(b.price || 0) };

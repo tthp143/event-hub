@@ -8,26 +8,33 @@ const CATS = ['คอม/ไอที', 'วิศวกรรม', 'พัฒ�
 const ROLE = { ADMIN: 'Admin', CREATOR: 'Event Creator', USER: 'User' };
 const formData = (e: FormEvent<HTMLFormElement>) => Object.fromEntries(new FormData(e.currentTarget));
 
+// ส่วนแสดงรายการกิจกรรม พร้อมค้นหา จัดการข้อมูล และยืนยันตัวตน
 export default function Home() {
   const [user, setUser] = useState<User | null>(null), [ev, setEv] = useState<EventRow[]>([]);
   const [q, setQ] = useState(''), [mode, setMode] = useState(''), [cat, setCat] = useState('');
   const [auth, setAuth] = useState<'login' | 'register' | null>(null);
   const [form, setForm] = useState<Partial<EventRow> | null>(null), [err, setErr] = useState('');
 
+  // ส่วนดึงกิจกรรมตามคำค้นและตัวกรองที่เลือก
   const load = useCallback(
     () => api<EventRow[]>(`/api/events?${new URLSearchParams({ q, mode, category: cat })}`).then(setEv).catch(e => setErr(e.message)),
     [q, mode, cat]);
   useEffect(() => { api<User | null>('/api/auth/me').then(setUser); }, []);
   useEffect(() => { load(); }, [load, user]);
 
+  // ส่วนส่งคำค้นหากิจกรรม
   const search = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErr('');
     void load();
   };
+  // ส่วนเรียกใช้การทำงานและโหลดรายการกิจกรรมใหม่
   const run = async (f: () => Promise<unknown>) => { setErr(''); try { await f(); await load(); } catch (e) { setErr((e as Error).message); } };
+  // ส่วนเพิ่มหรือแก้ไขกิจกรรมผ่าน API
   const save = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const d = formData(e); run(async () => { await api(form?.id ? `/api/events/${form.id}` : '/api/events', form?.id ? 'PUT' : 'POST', d); setForm(null); }); };
+  // ส่วนเข้าสู่ระบบหรือสมัครสมาชิก
   const sign = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const d = formData(e); run(async () => { setUser(await api<User>(`/api/auth/${auth}`, 'POST', d)); setAuth(null); }); };
+  // ส่วนออกจากระบบ
   const out = () => run(async () => { await api('/api/auth/logout', 'POST'); setUser(null); });
   const canPost = user && user.role !== 'USER';
 

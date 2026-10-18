@@ -3,6 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = { title: 'Event Hub — รวมกิจกรรมและค่าย', description: 'ค้นหาและสมัครเข้าร่วมกิจกรรม' };
 
+// ส่วนกำหนดโครงหน้าเว็บและภาษาหลักของแอป
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
