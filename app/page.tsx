@@ -1,69 +1,111 @@
-import Image from "next/image";
+'use client';
+import { useEffect, useState, useCallback, type FormEvent } from 'react';
+import Link from 'next/link';
+import { api } from '@/lib/api';
+import type { EventRow, User } from '@/lib/server';
+
+const CATS = ['คอม/ไอที', 'วิศวกรรม', 'พัฒนาทักษะ/เวิร์กชอป', 'กิจกรรมออนไลน์', 'อื่นๆ'];
+const ROLE = { ADMIN: 'Admin', CREATOR: 'Event Creator', USER: 'User' };
+const formData = (e: FormEvent<HTMLFormElement>) => Object.fromEntries(new FormData(e.currentTarget));
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null), [ev, setEv] = useState<EventRow[]>([]);
+  const [q, setQ] = useState(''), [mode, setMode] = useState(''), [cat, setCat] = useState('');
+  const [auth, setAuth] = useState<'login' | 'register' | null>(null);
+  const [form, setForm] = useState<Partial<EventRow> | null>(null), [err, setErr] = useState('');
+
+  const load = useCallback(
+    () => api<EventRow[]>(`/api/events?${new URLSearchParams({ q, mode, category: cat })}`).then(setEv).catch(e => setErr(e.message)),
+    [q, mode, cat]);
+  useEffect(() => { api<User | null>('/api/auth/me').then(setUser); }, []);
+  useEffect(() => { load(); }, [load, user]);
+
+  const search = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErr('');
+    void load();
+  };
+  const run = async (f: () => Promise<unknown>) => { setErr(''); try { await f(); await load(); } catch (e) { setErr((e as Error).message); } };
+  const save = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const d = formData(e); run(async () => { await api(form?.id ? `/api/events/${form.id}` : '/api/events', form?.id ? 'PUT' : 'POST', d); setForm(null); }); };
+  const sign = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const d = formData(e); run(async () => { setUser(await api<User>(`/api/auth/${auth}`, 'POST', d)); setAuth(null); }); };
+  const out = () => run(async () => { await api('/api/auth/logout', 'POST'); setUser(null); });
+  const canPost = user && user.role !== 'USER';
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main>
+      <header>
+        <h1>Event Hub</h1>
+        <div className="row">
+          {user ? <>
+            <span>{user.username} <span className="tag">{ROLE[user.role]}</span></span>
+            {user.role === 'ADMIN' && <Link href="/dashboard"><button>Dashboard</button></Link>}
+            {canPost && <button className="pri" onClick={() => setForm({})}>เพิ่มกิจกรรม</button>}
+            <button onClick={out}>ออกจากระบบ</button>
+          </> : <>
+            <button onClick={() => setAuth('login')}>เข้าสู่ระบบ</button>
+            <button className="pri" onClick={() => setAuth('register')}>สมัครสมาชิก</button>
+          </>}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      <form className="row" onSubmit={search}>
+        <input placeholder="ค้นหากิจกรรม ผู้จัด..." value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+        <select value={mode} onChange={e => setMode(e.target.value)}><option value="">ทุกรูปแบบ</option><option>ออนไลน์</option><option>ออนไซต์</option></select>
+        <select value={cat} onChange={e => setCat(e.target.value)}><option value="">ทุกหมวด</option>{CATS.map(c => <option key={c}>{c}</option>)}</select>
+        <button type="submit" className="pri">ค้นหา</button>
+      </form>
+      {err && <p className="err">{err}</p>}
+
+      <div className="grid">
+        {ev.map(e => (
+          <article className="card" key={e.id}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {e.image ? <img src={e.image} alt={e.title} loading="lazy" /> : <div className="ph" />}
+            <div className="body">
+              <span className="by">จัดโดย {e.organizer}</span>
+              <h3>{e.title}</h3>
+              <p className="desc">{e.description}</p>
+              <div className="tags">
+                <span className="tag dark">{e.mode}</span>
+                {e.category && <span className="tag">{e.category}</span>}
+                <span className="tag">{e.price ? `${e.price} บาท` : 'ฟรี'}</span>
+                <span className="tag">สมัครแล้ว {e.joined} คน</span>
+              </div>
+              <div className="acts">
+                {!user ? <button onClick={() => setAuth('login')}>เข้าสู่ระบบเพื่อสมัคร</button>
+                  : user.id !== 0 && <button className={e.mine ? '' : 'pri'} onClick={() => run(() => api(`/api/events/${e.id}/join`, e.mine ? 'DELETE' : 'POST'))}>{e.mine ? 'ยกเลิกการสมัคร' : 'สมัครเข้าร่วม'}</button>}
+                {user && (user.role === 'ADMIN' || e.owner_id === user.id) && <>
+                  <button onClick={() => setForm(e)}>แก้ไข</button>
+                  <button className="bad" onClick={() => confirm('ลบกิจกรรมนี้?') && run(() => api(`/api/events/${e.id}`, 'DELETE'))}>ลบ</button>
+                </>}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      {!ev.length && <p>ยังไม่มีกิจกรรมที่ตรงกับการค้นหา</p>}
+
+      {auth && <div className="modal" onClick={() => setAuth(null)}><form onSubmit={sign} onClick={e => e.stopPropagation()}>
+        <h3>{auth === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</h3>
+        <input name="username" placeholder="ชื่อผู้ใช้" required /><input name="password" type="password" placeholder="รหัสผ่าน" required />
+        {err && <span className="err">{err}</span>}
+        <button className="pri">{auth === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
+      </form></div>}
+
+      {form && <div className="modal" onClick={() => setForm(null)}><form onSubmit={save} onClick={e => e.stopPropagation()}>
+        <h3>{form.id ? 'แก้ไขกิจกรรม' : 'เพิ่มกิจกรรม'}</h3>
+        <input name="title" placeholder="ชื่อกิจกรรม" defaultValue={form.title} required />
+        <textarea name="description" placeholder="รายละเอียด" defaultValue={form.description} required />
+        <input name="image" placeholder="ลิงก์รูปภาพ (https://...)" defaultValue={form.image} />
+        <input name="organizer" placeholder="ผู้จัด" defaultValue={form.organizer} />
+        <div className="row">
+          <select name="mode" defaultValue={form.mode || 'ออนไลน์'}><option>ออนไลน์</option><option>ออนไซต์</option></select>
+          <select name="category" defaultValue={form.category}><option value="">หมวดหมู่</option>{CATS.map(c => <option key={c}>{c}</option>)}</select>
+          <input name="price" type="number" min="0" placeholder="ราคา (0 = ฟรี)" defaultValue={form.price ?? 0} style={{ width: 130 }} />
         </div>
-      </main>
-    </div>
+        {err && <span className="err">{err}</span>}
+        <button className="pri">บันทึก</button>
+      </form></div>}
+    </main>
   );
 }
